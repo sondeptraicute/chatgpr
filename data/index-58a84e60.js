@@ -91,7 +91,7 @@ const we = {
         class: "pr-4 grow-0 shrink-0 w-10 sm:w-12"
     }, [
       d("img", {
-        src: "/data/img/user.jpg",
+        src: "https://i.imgur.com/AXoNQth.jpg",
         alt: "Ảnh của tôi",
         class: "rounded-full w-8 h-8 avatar"
     }),
@@ -112,7 +112,7 @@ const we = {
         class: "font-semibold pr-4 grow-0 shrink-0 w-10 sm:w-12"
     },[ 
       d("img", {
-        src: "/data/img/gpt.png",
+        src: "https://i.imgur.com/BkEHcNs.png",
         alt: "GPT ",
         class: "rounded-full w-8 h-8 avatar"
     }),
@@ -286,118 +286,149 @@ const we = {
                     x = localStorage.getItem("dark_mode");
                 x && (e.value = x === "true"), l && (a.value = l, h())
             });
-            const k = () => {
-                if (r.value) return;
-                const l = +localStorage.getItem("last_call");
-                if (!a.value && l && rate_limit && Date.now() - +l < rate_limit * 1) {
-                    C.$toast.show("Để ngăn chặn lạm dụng, chúng tôi đã giới hạn gửi liên tục.", {
-                        type: "warning",
-                        maxToasts: 1,
-                        duration: 6e3
-                    });
-                    return
-                }
-                r.value = !0, t.push({
-                    who: "ME",
-                    message: n.value
-                }, {
-                    who: "AI",
-                    message: ""
-                }), ke(() => {
-                    b.value.scrollIntoView({
-                        smooth: !0
-                    })
+// Function to handle chat interactions
+const performChatInteraction = () => {
+  if (r.value) return;
+
+  const l = +localStorage.getItem("last_call");
+  if (!a.value && l && rate_limit && Date.now() - +l < rate_limit * 1) {
+    C.$toast.show("Để ngăn chặn lạm dụng, chúng tôi đã giới hạn gửi liên tục.", {
+      type: "warning",
+      maxToasts: 1,
+      duration: 6000
+    });
+    return;
+  }
+
+  r.value = true;
+  t.push(
+    {
+      who: "ME",
+      message: n.value
+    },
+    {
+      who: "AI",
+      message: ""
+    }
+  );
+
+  ke(() => {
+    b.value.scrollIntoView({
+      smooth: true
+    });
+  });
+
+  const x = t
+    .filter(u => !!u.message)
+    .map(u => ({
+      role: u.who === "ai" ? "assistant" : "user",
+      content: u.message.trim()
+    }));
+
+  fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    body: JSON.stringify({
+      model: "gpt-3.5-turbo",
+      max_tokens: 2048,
+      top_p: 0,
+      temperature: 0.2,
+      frequency_penalty: 0,
+      presence_penalty: 0,
+      messages: x,
+      stream: true
+    }),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${a.value || my_api_key}`
+    }
+  })
+    .then(u => {
+      if (u.status === 200) return u.body;
+      throw u;
+    })
+    .then(u => {
+      const f = u.getReader();
+      return new ReadableStream({
+        start(v) {
+          function S() {
+            f.read().then(({ done: I, value: g }) => {
+              if (I) {
+                console.log("done", I);
+                b.value.scrollIntoView({
+                  smooth: true
                 });
-                const x = t.filter(u => !!u.message).map(u => ({
-                    role: u.who === "ai" ? "assistant" : "user",
-                    content: u.message.trim()
-                }));
-                fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        max_tokens: 2048,
-                        top_p: 0,
-                        temperature: .2,
-                        frequency_penalty: 0,
-                        presence_penalty: 0,
-                        messages: x,
-                        stream: !0
-                    }),
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${a.value||my_api_key}`
-                    }
-                }).then(u => {
-                    if (u.status === 200) return u.body;
-                    throw u
-                }).then(u => {
-                    const f = u.getReader();
-                    return new ReadableStream({
-                        start(v) {
-                            function S() {
-                                f.read().then(({
-                                    done: I,
-                                    value: g
-                                }) => {
-                                    if (I) {
-                                        console.log("done", I), b.value.scrollIntoView({
-                                            smooth: !0
-                                        }), v.close();
-                                        return
-                                    }
-                                    v.enqueue(g);
-                                    const q = new TextDecoder().decode(g);
-                                    try {
-                                        const M = q.split("data:").filter(z => !!z.trim() && z.trim() !== "[DONE]").map(z => JSON.parse(z)).map(z => z.choices[0].delta.content).join(""),
-                                            O = t[t.length - 1];
-                                        O.message += M, b.value.scrollIntoView({
-                                            smooth: !0
-                                        })
-                                    } catch (R) {
-                                        console.error(R)
-                                    }
-                                    S()
-                                })
-                            }
-                            S()
-                        }
-                    })
-                }).then(u => new Response(u, {
-                    headers: {
-                        "Content-Type": "text/html"
-                    }
-                }).text()).then(u => {
-                    r.value = !1, localStorage.setItem("last_call", Date.now())
-                }).catch(u => {
-                    console.log(u);
-                    const f = t[t.length - 1];
-                    switch (u.status) {
-                        
-                            case 401: {
-                                f.message = "Lỗi Api Liên Hệ hệ: Phạm Thế Sơn";
-                                break;
-                            }
-                            case 403: {
-                                f.message = "Không Truy Cập";
-                                break;
-                            }
-                            case 404: {
-                                f.message = "Không Tìm Thấy";
-                                break;
-                            }
-                            case 429: {
-                                f.message = "Đã Đạt Đến Giới Hạn Yêu Cầu, Vui Lòng Nghỉ Ngơi";
-                                break;
-                            }
-                            default: {
-                                console.log(u), f.message = "Lỗi Không Xác Định, Vui Lòng Tải Lại Trang Và Thử Lại.";
-                                // console.log(u), f.message = "Lỗi " + u.message;
-                                break;
-                            }
-                        
-                        
-                    }
+                v.close();
+                resetChatStatus(); // Reset chat status after interaction is done
+                return;
+              }
+              v.enqueue(g);
+              const q = new TextDecoder().decode(g);
+              try {
+                const M = q
+                  .split("data:")
+                  .filter(z => !!z.trim() && z.trim() !== "[DONE]")
+                  .map(z => JSON.parse(z))
+                  .map(z => z.choices[0].delta.content)
+                  .join("");
+                const O = t[t.length - 1];
+                O.message += M;
+                b.value.scrollIntoView({
+                  smooth: true
+                });
+              } catch (R) {
+                console.error(R);
+              }
+              S();
+            });
+          }
+          S();
+        }
+      });
+    })
+    .then(u => new Response(u, { headers: { "Content-Type": "text/html" } }).text())
+    .then(() => {
+      resetChatStatus(); // Reset chat status after response is received
+      performChatInteraction(); // Call the function recursively for continuous interaction
+    })
+    .catch(u => {
+      console.log(u);
+      const f = t[t.length - 1];
+      switch (u.status) {
+        case 401: {
+          f.message = "Lỗi Api Liên Hệ hệ: Phạm Thế Sơn";
+          break;
+        }
+        case 403: {
+          f.message = "Không Truy Cập";
+          break;
+        }
+        case 404: {
+          f.message = "Không Tìm Thấy";
+          break;
+        }
+        case 429: {
+          f.message = "Đã Đạt Đến Giới Hạn Yêu Cầu, Vui Lòng Nghỉ Ngơi";
+          break;
+        }
+        default: {
+          console.log(u);
+          f.message = "Lỗi Không Xác Định, Vui Lòng Tải Lại Trang Và Thử Lại.";
+          break;
+        }
+      }
+      resetChatStatus(); // Reset chat status after error
+    });
+};
+
+// Function to reset chat status
+const resetChatStatus = () => {
+  r.value = false;
+  localStorage.setItem("last_call", Date.now());
+};
+
+// Call the function to start chat interaction
+performChatInteraction();
+
                     r.value = !1, localStorage.setItem("last_call", Date.now())
                 }), n.value = ""
             };
